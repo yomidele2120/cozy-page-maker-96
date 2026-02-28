@@ -33,24 +33,36 @@ export function useConversations() {
 
   const fetchConversations = useCallback(async () => {
     if (!user) return;
-    const { data } = await fromTable('conversations')
-      .select('*')
-      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
-      .order('last_message_at', { ascending: false });
+    try {
+      const { data, error } = await fromTable('conversations')
+        .select('*')
+        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+        .order('last_message_at', { ascending: false });
 
-    if (data) {
-      const otherIds = (data as Conversation[]).map(c => c.participant_1 === user.id ? c.participant_2 : c.participant_1);
-      const { data: vendors } = await supabase
-        .from('vendors')
-        .select('user_id, store_name, logo_url')
-        .in('user_id', otherIds);
+      if (error) {
+        console.error('[Chat] Failed to fetch conversations:', error);
+        setLoading(false);
+        return;
+      }
 
-      const enriched = (data as Conversation[]).map(c => {
-        const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
-        const vendor = vendors?.find(v => v.user_id === otherId);
-        return { ...c, other_vendor: vendor ? { store_name: vendor.store_name, logo_url: vendor.logo_url } : undefined };
-      });
-      setConversations(enriched);
+      if (data && data.length > 0) {
+        const otherIds = (data as Conversation[]).map(c => c.participant_1 === user.id ? c.participant_2 : c.participant_1);
+        const { data: vendors } = await supabase
+          .from('vendors')
+          .select('user_id, store_name, logo_url')
+          .in('user_id', otherIds);
+
+        const enriched = (data as Conversation[]).map(c => {
+          const otherId = c.participant_1 === user.id ? c.participant_2 : c.participant_1;
+          const vendor = vendors?.find(v => v.user_id === otherId);
+          return { ...c, other_vendor: vendor ? { store_name: vendor.store_name, logo_url: vendor.logo_url } : undefined };
+        });
+        setConversations(enriched);
+      } else {
+        setConversations([]);
+      }
+    } catch (err) {
+      console.error('[Chat] Error fetching conversations:', err);
     }
     setLoading(false);
   }, [user]);
@@ -78,11 +90,19 @@ export function useMessages(conversationId: string | null) {
   const fetchMessages = useCallback(async () => {
     if (!conversationId) return;
     setLoading(true);
-    const { data } = await fromTable('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-    setMessages((data as Message[]) || []);
+    try {
+      const { data, error } = await fromTable('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('[Chat] Failed to fetch messages:', error);
+      }
+      setMessages((data as Message[]) || []);
+    } catch (err) {
+      console.error('[Chat] Error fetching messages:', err);
+    }
     setLoading(false);
   }, [conversationId]);
 
@@ -116,20 +136,21 @@ export function useUnreadCount() {
   useEffect(() => {
     if (!user) return;
 
-    const fetch = async () => {
-      const { count: c } = await fromTable('messages')
+    const fetchCount = async () => {
+      const { count: c, error } = await fromTable('messages')
         .select('*', { count: 'exact', head: true })
         .eq('receiver_id', user.id)
         .eq('is_read', false);
+      if (error) console.error('[Chat] Failed to fetch unread count:', error);
       setCount(c || 0);
     };
 
-    fetch();
+    fetchCount();
 
     const channel = supabase
       .channel('unread-messages')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetch())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => fetch())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => fetchCount())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => fetchCount())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -139,6 +160,8 @@ export function useUnreadCount() {
 }
 
 export async function sendMessage(conversationId: string, senderId: string, receiverId: string, message: string) {
+  console.log('[Chat] Sending message:', { conversationId, senderId, receiverId, messageLength: message.length });
+
   const { error } = await fromTable('messages').insert({
     conversation_id: conversationId,
     sender_id: senderId,
@@ -146,30 +169,54 @@ export async function sendMessage(conversationId: string, senderId: string, rece
     message,
   });
 
-  if (!error) {
-    await fromTable('conversations').update({
-      last_message: message,
-      last_message_at: new Date().toISOString(),
-    }).eq('id', conversationId);
+  if (error) {
+    console.error('[Chat] Failed to send message:', error);
+    return { error };
   }
 
-  return { error };
+  console.log('[Chat] Message sent successfully');
+
+  // Update conversation's last message
+  const { error: updateError } = await fromTable('conversations').update({
+    last_message: message,
+    last_message_at: new Date().toISOString(),
+  }).eq('id', conversationId);
+
+  if (updateError) {
+    console.error('[Chat] Failed to update conversation:', updateError);
+  }
+
+  return { error: null };
 }
 
 export async function getOrCreateConversation(userId1: string, userId2: string) {
-  // Check existing
-  const { data: existing } = await fromTable('conversations')
+  console.log('[Chat] Getting or creating conversation:', { userId1, userId2 });
+
+  const { data: existing, error: fetchError } = await fromTable('conversations')
     .select('*')
     .or(`and(participant_1.eq.${userId1},participant_2.eq.${userId2}),and(participant_1.eq.${userId2},participant_2.eq.${userId1})`)
     .maybeSingle();
 
-  if (existing) return existing as Conversation;
+  if (fetchError) {
+    console.error('[Chat] Error finding conversation:', fetchError);
+    throw fetchError;
+  }
+
+  if (existing) {
+    console.log('[Chat] Found existing conversation:', existing.id);
+    return existing as Conversation;
+  }
 
   const { data, error } = await fromTable('conversations')
     .insert({ participant_1: userId1, participant_2: userId2 })
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[Chat] Error creating conversation:', error);
+    throw error;
+  }
+
+  console.log('[Chat] Created new conversation:', data.id);
   return data as Conversation;
 }
