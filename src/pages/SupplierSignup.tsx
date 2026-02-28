@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Store, Upload } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+const db = supabase as any;
+
 export default function SupplierSignup() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -69,7 +71,7 @@ export default function SupplierSignup() {
 
       // 4. Create vendor record
       const categories = form.productCategories.split(',').map(c => c.trim()).filter(Boolean);
-      const { error: vendorError } = await supabase.from('vendors').insert({
+      const { error: vendorError } = await db.from('vendors').insert({
         user_id: userId,
         store_name: form.companyName,
         store_description: form.storeDescription || null,
@@ -88,7 +90,7 @@ export default function SupplierSignup() {
       if (vendorError) throw vendorError;
 
       // 5. Assign vendor role
-      const { error: roleError } = await supabase.from('user_roles').insert({
+      const { error: roleError } = await db.from('user_roles').insert({
         user_id: userId,
         role: 'vendor',
       });

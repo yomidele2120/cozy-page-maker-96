@@ -13,47 +13,34 @@ import { toast } from 'sonner';
 import { User, ShoppingBag, Heart, Bell, Package, MapPin, Phone, Mail } from 'lucide-react';
 import { formatNaira } from '@/lib/format';
 
+const db = supabase as any;
+
 export default function UserDashboard() {
   const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
 
-  // Fetch profile
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ['user-profile', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user!.id)
-        .maybeSingle();
+      const { data } = await db.from('profiles').select('*').eq('user_id', user!.id).maybeSingle();
       return data;
     },
     enabled: !!user,
   });
 
-  // Fetch orders
   const { data: orders } = useQuery({
     queryKey: ['user-orders', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('orders')
-        .select('*, order_items(*, products(name, image_url))')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data } = await db.from('orders').select('*, order_items(*, products(name, image_url))').eq('user_id', user!.id).order('created_at', { ascending: false });
       return data || [];
     },
     enabled: !!user,
   });
 
-  // Fetch wishlist
   const { data: wishlist } = useQuery({
     queryKey: ['user-wishlist', user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('wishlist')
-        .select('*, products(name, price, image_url, slug)')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data } = await db.from('wishlist').select('*, products(name, price, image_url, slug)').eq('user_id', user!.id).order('created_at', { ascending: false });
       return data || [];
     },
     enabled: !!user,
@@ -82,10 +69,7 @@ export default function UserDashboard() {
 
   const handleSaveProfile = async () => {
     if (!user) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update(profileForm)
-      .eq('user_id', user.id);
+    const { error } = await db.from('profiles').update(profileForm).eq('user_id', user.id);
     if (error) {
       toast.error('Failed to update profile');
     } else {
@@ -95,7 +79,7 @@ export default function UserDashboard() {
   };
 
   const removeFromWishlist = async (id: string) => {
-    await supabase.from('wishlist').delete().eq('id', id);
+    await db.from('wishlist').delete().eq('id', id);
     toast.success('Removed from wishlist');
   };
 
@@ -153,7 +137,7 @@ export default function UserDashboard() {
               <Package className="w-8 h-8 text-accent-foreground" />
               <div>
                 <p className="text-2xl font-bold">
-                  {orders?.filter(o => o.status === 'delivered').length || 0}
+                  {orders?.filter((o: any) => o.status === 'delivered').length || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Delivered</p>
               </div>
@@ -164,7 +148,7 @@ export default function UserDashboard() {
               <Bell className="w-8 h-8 text-accent-foreground" />
               <div>
                 <p className="text-2xl font-bold">
-                  {orders?.filter(o => o.status === 'pending').length || 0}
+                  {orders?.filter((o: any) => o.status === 'pending').length || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
@@ -254,7 +238,7 @@ export default function UserDashboard() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {orders?.map(order => (
+                {orders?.map((order: any) => (
                   <Card key={order.id}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">

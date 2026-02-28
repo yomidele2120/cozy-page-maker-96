@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Store, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+const db = supabase as any;
+
 export default function SupplierLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +29,7 @@ export default function SupplierLogin() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Login failed');
 
-      const { data: vendor } = await supabase
+      const { data: vendor } = await db
         .from('vendors')
         .select('id, is_approved')
         .eq('user_id', user.id)
