@@ -51,7 +51,7 @@ export default function Checkout() {
 
     try {
       // Create order
-      const { data: order, error: orderError } = await supabase.from('orders').insert({
+      const { data: order, error: orderError } = await (supabase as any).from('orders').insert({
         user_id: user.id,
         email: formData.email,
         phone: formData.phone,
@@ -71,7 +71,7 @@ export default function Checkout() {
         quantity: item.quantity,
         price: item.price,
       }));
-      await supabase.from('order_items').insert(orderItems);
+      await (supabase as any).from('order_items').insert(orderItems);
 
       // Initialize payment via edge function
       const { data: paymentData, error: paymentError } = await supabase.functions.invoke('initialize-payment', {
