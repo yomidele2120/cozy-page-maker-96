@@ -190,9 +190,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          payment_method: string | null
+          paystack_reference: string | null
+          status: string
+          transaction_reference: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_method?: string | null
+          paystack_reference?: string | null
+          status?: string
+          transaction_reference?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          payment_method?: string | null
+          paystack_reference?: string | null
+          status?: string
+          transaction_reference?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           badge: string | null
+          brand: string | null
           category_id: string | null
           compare_at_price: number | null
           created_at: string
@@ -206,11 +251,13 @@ export type Database = {
           price: number
           slug: string
           stock: number
+          stock_quantity: number
           updated_at: string
           vendor_id: string | null
         }
         Insert: {
           badge?: string | null
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           created_at?: string
@@ -224,11 +271,13 @@ export type Database = {
           price?: number
           slug: string
           stock?: number
+          stock_quantity?: number
           updated_at?: string
           vendor_id?: string | null
         }
         Update: {
           badge?: string | null
+          brand?: string | null
           category_id?: string | null
           compare_at_price?: number | null
           created_at?: string
@@ -242,6 +291,7 @@ export type Database = {
           price?: number
           slug?: string
           stock?: number
+          stock_quantity?: number
           updated_at?: string
           vendor_id?: string | null
         }
@@ -261,6 +311,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          state: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -282,39 +368,92 @@ export type Database = {
       }
       vendors: {
         Row: {
+          address: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          company_name: string | null
           created_at: string
           id: string
           is_approved: boolean
           logo_url: string | null
           phone: string | null
+          product_categories: string[] | null
+          store_description: string | null
           store_name: string
           updated_at: string
           user_id: string
+          verification_document_url: string | null
           whatsapp_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          logo_url?: string | null
+          phone?: string | null
+          product_categories?: string[] | null
+          store_description?: string | null
+          store_name: string
+          updated_at?: string
+          user_id: string
+          verification_document_url?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          logo_url?: string | null
+          phone?: string | null
+          product_categories?: string[] | null
+          store_description?: string | null
+          store_name?: string
+          updated_at?: string
+          user_id?: string
+          verification_document_url?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      wishlist: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          is_approved?: boolean
-          logo_url?: string | null
-          phone?: string | null
-          store_name: string
-          updated_at?: string
+          product_id: string
           user_id: string
-          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          is_approved?: boolean
-          logo_url?: string | null
-          phone?: string | null
-          store_name?: string
-          updated_at?: string
+          product_id?: string
           user_id?: string
-          whatsapp_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

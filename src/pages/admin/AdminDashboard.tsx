@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+
+const db = supabase as any;
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +30,7 @@ export default function AdminDashboard() {
   const { data: products } = useQuery({
     queryKey: ['admin-products'],
     queryFn: async () => {
-      const { data } = await supabase.from('products').select('*, categories(name), vendors(store_name)').order('created_at', { ascending: false });
+      const { data } = await db.from('products').select('*, categories(name), vendors(store_name)').order('created_at', { ascending: false });
       return data || [];
     },
     enabled: isAdmin,
@@ -37,7 +39,7 @@ export default function AdminDashboard() {
   const { data: orders } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async () => {
-      const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      const { data } = await db.from('orders').select('*').order('created_at', { ascending: false });
       return data || [];
     },
     enabled: isAdmin,
@@ -46,7 +48,7 @@ export default function AdminDashboard() {
   const { data: vendors } = useQuery({
     queryKey: ['admin-vendors'],
     queryFn: async () => {
-      const { data } = await supabase.from('vendors').select('*').order('created_at', { ascending: false });
+      const { data } = await db.from('vendors').select('*').order('created_at', { ascending: false });
       return data || [];
     },
     enabled: isAdmin,
@@ -55,7 +57,7 @@ export default function AdminDashboard() {
   const { data: payments } = useQuery({
     queryKey: ['admin-payments'],
     queryFn: async () => {
-      const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+      const { data } = await db.from('payments').select('*').order('created_at', { ascending: false });
       return data || [];
     },
     enabled: isAdmin,
@@ -64,7 +66,7 @@ export default function AdminDashboard() {
   const { data: profiles } = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+      const { data } = await db.from('profiles').select('*').order('created_at', { ascending: false });
       return data || [];
     },
     enabled: isAdmin,
@@ -90,13 +92,13 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   const approveVendor = async (vendorId: string) => {
-    const { error } = await supabase.from('vendors').update({ is_approved: true }).eq('id', vendorId);
+    const { error } = await db.from('vendors').update({ is_approved: true }).eq('id', vendorId);
     if (error) toast.error(error.message);
     else { toast.success('Supplier approved!'); queryClient.invalidateQueries({ queryKey: ['admin-vendors'] }); }
   };
 
   const rejectVendor = async (vendorId: string) => {
-    const { error } = await supabase.from('vendors').update({ is_approved: false }).eq('id', vendorId);
+    const { error } = await db.from('vendors').update({ is_approved: false }).eq('id', vendorId);
     if (error) toast.error(error.message);
     else { toast.success('Supplier rejected'); queryClient.invalidateQueries({ queryKey: ['admin-vendors'] }); }
   };
@@ -271,7 +273,7 @@ export default function AdminDashboard() {
                       <td className="p-3">
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                           onClick={async () => {
-                            await supabase.from('products').delete().eq('id', p.id);
+                            await db.from('products').delete().eq('id', p.id);
                             queryClient.invalidateQueries({ queryKey: ['admin-products'] });
                             toast.success('Product deleted');
                           }}>
@@ -434,7 +436,7 @@ function AddProductForm({ categories, onSuccess }: { categories: any[]; onSucces
     e.preventDefault();
     setLoading(true);
     const slug = form.name.toLowerCase().replace(/[^\w ]+/g, '').replace(/ +/g, '-') + '-' + Date.now();
-    const { error } = await supabase.from('products').insert({
+    const { error } = await db.from('products').insert({
       name: form.name, slug,
       price: Number(form.price),
       compare_at_price: form.compare_at_price ? Number(form.compare_at_price) : null,
